@@ -5,6 +5,8 @@
 
 import numpy as np
 import os
+
+import torch
 from PIL import Image
 import sys
 import torchvision
@@ -52,9 +54,11 @@ class Dataset(base.ImageDataset):
         test_set = CIFAR10(train=False, root=os.path.join(get_platform().dataset_root, 'cifar10'), download=True)
         return Dataset(test_set.data, np.array(test_set.targets))
 
-    def __init__(self,  examples, labels, image_transforms=None):
+    def __init__(self, examples, labels, image_transforms=None):
         super(Dataset, self).__init__(examples, labels, image_transforms or [],
-                                      [torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])])
+                                      [
+                                          torchvision.transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+                                      ])
 
     def example_to_image(self, example):
         return Image.fromarray(example)
