@@ -160,6 +160,7 @@ class TrainingHparams(Hparams):
     warmup_steps: str = None
     weight_decay: float = None
     apex_fp16: bool = False
+    epochs_to_accumulate_gradient_from: int = None
 
     _name: str = 'Training Hyperparameters'
     _description: str = 'Hyperparameters that determine how the model is trained.'
