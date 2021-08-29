@@ -46,9 +46,11 @@ class Strategy(base.Strategy):
         if pruning_hparams.pruning_layers_to_ignore:
             prunable_tensors -= set(pruning_hparams.pruning_layers_to_ignore.split(','))
 
-        grad_location = paths.gradient_on_test(
-            pruning_hparams._output_location) if pruning_hparams.pruning_on_test_or_train_gradient == 'test' else paths.accumulated_training_gradient(
-            pruning_hparams._output_location)
+        grad_location = {
+            'test': paths.gradient_on_test(pruning_hparams._output_location),
+            'train': paths.accumulated_training_gradient(pruning_hparams._output_location),
+            'train_after': paths.gradient_on_train(pruning_hparams._output_location),
+        }[pruning_hparams.pruning_on_test_or_train_gradient]
         grad_dict = torch.load(
             grad_location
         )

@@ -30,4 +30,7 @@ def gradients(root): return os.path.join(root, 'gradients')
 def gradient_on_test(root): return os.path.join(gradients(root), 'test_gradient.pth')
 
 
+def gradient_on_train(root): return os.path.join(gradients(root), 'train_gradient.pth')
+
+
 def accumulated_training_gradient(root): return os.path.join(gradients(root), 'accumulated_training_gradient.pth')
