@@ -97,7 +97,7 @@ def create_eval_callback(eval_name: str, loader: DataLoader, verbose=False):
     return eval_callback
 
 
-def create_gradient_on_test_callback(training_hparams: hparams.TrainingHparams, loader: DataLoader):
+def create_gradient_on_dataset_callback(training_hparams: hparams.TrainingHparams, loader: DataLoader, create_path):
     """This function returns a callback."""
 
     def gradient_on_test_callback(output_location, step, model, optimizer, logger):
@@ -115,9 +115,33 @@ def create_gradient_on_test_callback(training_hparams: hparams.TrainingHparams, 
                 loss.backward()
 
         if get_platform().is_primary_process:
-            grad_dict = {x[0]:x[1].grad for x in model.model.named_parameters()}
+            grad_dict = {x[0]: x[1].grad for x in model.model.named_parameters()}
             os.makedirs(paths.gradients(output_location), exist_ok=True)
-            torch.save(grad_dict, paths.gradient_on_test(output_location))
+            torch.save(grad_dict, create_path(output_location))
+
+    return gradient_on_test_callback
+
+def create_gradient_on_train_callback(training_hparams: hparams.TrainingHparams, loader: DataLoader):
+    """This function returns a callback."""
+
+    def gradient_on_test_callback(output_location, step, model, optimizer, logger):
+        model.train()
+
+        for examples, labels in loader:
+            examples = examples.to(get_platform().torch_device)
+            labels = labels.squeeze().to(get_platform().torch_device).long()
+
+            loss = model.loss_criterion(model(examples), labels)
+            if training_hparams.apex_fp16:
+                with apex.amp.scale_loss(loss, optimizer) as scaled_loss:
+                    scaled_loss.backward()
+            else:
+                loss.backward()
+
+        if get_platform().is_primary_process:
+            grad_dict = {x[0]: x[1].grad for x in model.model.named_parameters()}
+            os.makedirs(paths.gradients(output_location), exist_ok=True)
+            torch.save(grad_dict, paths.gradient_on_train(output_location))
 
     return gradient_on_test_callback
 
@@ -129,6 +153,7 @@ def run_every_epoch(callback):
         if step.it != 0:
             return
         callback(output_location, step, model, optimizer, logger)
+
     return modified_callback
 
 
@@ -141,6 +166,7 @@ def run_at_step(step1, callback):
         if step != step1:
             return
         callback(output_location, step, model, optimizer, logger)
+
     return modified_callback
 
 
@@ -152,7 +178,8 @@ def standard_callbacks(training_hparams: hparams.TrainingHparams, train_set_load
     end = Step.from_str(training_hparams.training_steps, train_set_loader.iterations_per_epoch)
     test_eval_callback = create_eval_callback('test', test_set_loader, verbose=verbose)
     train_eval_callback = create_eval_callback('train', train_set_loader, verbose=verbose)
-    gradient_on_test_callback = create_gradient_on_test_callback(training_hparams, test_set_loader)
+    gradient_on_test_callback = create_gradient_on_dataset_callback(training_hparams, test_set_loader, lambda x: paths.gradient_on_test(x))
+    gradient_on_train_callback = create_gradient_on_dataset_callback(training_hparams, train_set_loader, lambda x: paths.gradient_on_train(x))
 
     # Basic checkpointing and state saving at the beginning and end.
     result = [
@@ -161,6 +188,7 @@ def standard_callbacks(training_hparams: hparams.TrainingHparams, train_set_load
         run_at_step(end, save_logger),
         run_every_epoch(checkpointing.save_checkpoint_callback),
         run_at_step(end, gradient_on_test_callback),
+        run_at_step(end, gradient_on_train_callback),
     ]
 
     # Test every epoch if requested.

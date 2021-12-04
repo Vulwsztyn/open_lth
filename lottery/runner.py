@@ -129,4 +129,7 @@ class LotteryRunner(Runner):
             old_location = self.desc.run_path(self.replicate, level-1)
             model = models.registry.load(old_location, self.desc.train_end_step,
                                          self.desc.model_hparams, self.desc.train_outputs)
+            if hasattr(self.desc.pruning_hparams, '_output_location'):
+                self.desc.pruning_hparams._output_location = self.desc.run_path(self.replicate, level - 1)
+
             pruning.registry.get(self.desc.pruning_hparams)(model, Mask.load(old_location)).save(new_location)

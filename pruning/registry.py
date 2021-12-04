@@ -7,10 +7,14 @@ import copy
 from functools import partial
 
 from foundations.hparams import PruningHparams
-from pruning import sparse_global
-from pruning import sparse_layerwise
+from pruning import sparse_global, sparse_layerwise, gradient_global, gradient_layerwise
 
-registered_strategies = {'sparse_global': sparse_global.Strategy, 'sparse_local': sparse_layerwise.Strategy}
+registered_strategies = {
+    'sparse_global': sparse_global.Strategy,
+    'sparse_local': sparse_layerwise.Strategy,
+    'gradient_global': gradient_global.Strategy,
+    'gradient_local': gradient_layerwise.Strategy,
+}
 
 
 def get(pruning_hparams: PruningHparams):
